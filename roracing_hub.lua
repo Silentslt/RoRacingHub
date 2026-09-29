@@ -3,20 +3,19 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-
-local StudioTestModule = "project_apex"
 local player = Players.LocalPlayer
 local Playergui = player:WaitForChild("PlayerGui")
 
 local DiscordLink = "https://discord.gg/YOUR_INVITE"
+
+-- Every entry appears in the Games list. No game ID is needed.
+-- Module is used in Studio; Url is used by the external loadstring loader.
 local GameModules = {
-	 [5976159288] = {
-	     Name = "PROJECT APEX",
-	     Module = "Project_Apex",
-	     Url = "https://github.com/Silentslt/RoRacingHub/blob/main/games/project_apex.lua",
+	{
+		Name = "PROJECT APEX",
+		Module = "project_apex",
+		Url = "https://raw.githubusercontent.com/Silentslt/RoRacingHub/main/games/project_apex.lua",
 	},
-
-
 }
 
 local previousGui = Playergui:FindFirstChild("RoracingHub")
@@ -475,30 +474,79 @@ AddRow(GeneralRows, "Discord Server", "COPY LINK", function(button)
 	end
 end)
 
-local currentGame = GameModules[game.GameId]
-if RunService:IsStudio() and StudioTestModule ~= "" then
-	currentGame = {Name = "STUDIO TEST", Module = StudioTestModule}
+local GameRows = AddSection(MainPage, "Games")
+local LoadingModule = false
+local SelectedModule = nil
+local SelectedButton = nil
+local HubAlive = true
+
+CurrentScriptLoaded.Text = "SELECT A GAME:\nMAIN > GAMES"
+
+Roracinggui.Destroying:Connect(function()
+	HubAlive = false
+end)
+
+local function RemoveGamePage()
+	if Pages.Game then
+		-- Destroying the page lets the module restore its changes and connections.
+		Pages.Game:Destroy()
+		Pages.Game = nil
+	end
+	if Buttons.Game then
+		Buttons.Game:Destroy()
+		Buttons.Game = nil
+	end
+	SelectedModule = nil
+	if SelectedButton and SelectedButton.Parent then
+		SelectedButton.Text = "LOAD"
+	end
+	SelectedButton = nil
+	ShowPage("Main")
 end
-if currentGame then
-	CurrentScriptLoaded.Text = "LOADING:\n" .. currentGame.Name
-	local GamePage = AddPage("Game", currentGame.Name)
+
+local function LoadGameModule(GameModule, button)
+	if LoadingModule then
+		return
+	end
+
+	if SelectedModule == GameModule then
+		ShowPage("Game")
+		return
+	end
+
+	LoadingModule = true
+	button.Text = "LOADING..."
+	CurrentScriptLoaded.Text = "LOADING:\n" .. GameModule.Name
 
 	local ok, result = pcall(function()
-		if currentGame.Module then
+		if RunService:IsStudio() or not GameModule.Url then
+			assert(GameModule.Module, "Set a ModuleScript name for Studio")
 			local folder = ReplicatedStorage:WaitForChild("RoracingModules", 5)
 			assert(folder, "Create ReplicatedStorage.RoracingModules")
-			local module = folder:WaitForChild(currentGame.Module, 5)
-			assert(module and module:IsA("ModuleScript"), "Missing ModuleScript: " .. currentGame.Module)
+			local module = folder:WaitForChild(GameModule.Module, 5)
+			assert(module and module:IsA("ModuleScript"), "Missing ModuleScript: " .. GameModule.Module)
 			return require(module)
 		end
-		assert(not RunService:IsStudio(), "Set Module to a ModuleScript name for Studio testing")
-		local source = game:HttpGet(currentGame.Url)
+
+		assert(type(loadstring) == "function", "This environment does not support loadstring")
+		local source = game:HttpGet(GameModule.Url)
 		local compiled, compileError = loadstring(source)
 		assert(compiled, compileError)
 		return compiled()
 	end)
 
-	if ok and type(result) == "function" then
+	if not HubAlive then
+		return
+	end
+
+	if ok and type(result) ~= "function" then
+		ok = false
+		result = "The game module must return function(hub)"
+	end
+
+	if ok then
+		RemoveGamePage()
+		local GamePage = AddPage("Game", GameModule.Name)
 		local built, buildError = pcall(result, {
 			Page = GamePage,
 			AddSection = AddSection,
@@ -506,16 +554,40 @@ if currentGame then
 			AddToggle = AddToggle,
 			AddNumberInput = AddNumberInput,
 		})
+
+		if not HubAlive then
+			return
+		end
+
 		if built then
-			CurrentScriptLoaded.Text = "CURRENTLY LOADED:\n" .. currentGame.Name
+			SelectedModule = GameModule
+			SelectedButton = button
+			button.Text = "OPEN"
+			CurrentScriptLoaded.Text = "CURRENTLY LOADED:\n" .. GameModule.Name
+			ShowPage("Game")
 		else
+			RemoveGamePage()
+			button.Text = "RETRY"
 			CurrentScriptLoaded.Text = "MODULE ERROR:\nCHECK OUTPUT"
 			warn("RORACING HUB: game module failed: " .. tostring(buildError))
 		end
 	else
-		CurrentScriptLoaded.Text = "MODULE ERROR:\nCHECK OUTPUT"
-		warn("RORACING HUB: could not load game module: " .. tostring(result))
+		button.Text = "RETRY"
+		if SelectedModule then
+			CurrentScriptLoaded.Text = "CURRENTLY LOADED:\n" .. SelectedModule.Name
+		else
+			CurrentScriptLoaded.Text = "MODULE ERROR:\nCHECK OUTPUT"
+		end
+		warn("RORACING HUB: could not load " .. GameModule.Name .. ": " .. tostring(result))
 	end
+
+	LoadingModule = false
+end
+
+for _, GameModule in ipairs(GameModules) do
+	AddRow(GameRows, GameModule.Name, "LOAD", function(button)
+		LoadGameModule(GameModule, button)
+	end)
 end
 
 ShowPage("Main")
