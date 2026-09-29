@@ -12,7 +12,7 @@ local DiscordLink = "https://discord.gg/YOUR_INVITE"
 local GameModules = {
 	 [5976159288] = {
 	     Name = "PROJECT APEX",
-	     Module = "ProjectApex",
+	     Module = "Project_Apex",
 	     Url = "https://github.com/Silentslt/RoRacingHub/blob/main/games/project_apex.lua",
 	},
 
