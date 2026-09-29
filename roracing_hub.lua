@@ -13,7 +13,7 @@ local GameModules = {
 	 [5976159288] = {
 	     Name = "PROJECT APEX",
 	     Module = "ProjectApex",
-	     Url = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/games/project_apex.lua",
+	     Url = "https://github.com/Silentslt/RoRacingHub/blob/main/games/project_apex.lua",
 	},
 
 

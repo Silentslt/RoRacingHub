@@ -1,5 +1,3 @@
--- ModuleScript: ReplicatedStorage/RoracingModules/project_apex
--- Or repository file: games/project_apex.lua
 return function(hub)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
