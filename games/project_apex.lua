@@ -136,6 +136,7 @@ return function(hub)
 	local VelocityMult = 0.025
 
 	local speedRows = hub.AddSection(hub.Page, "Car Speed")
+	speedRows.Parent.LayoutOrder = 0
 	hub.AddToggle(speedRows, "Speed boost (hold W)", function(enabled)
 		SpeedEnabled = enabled
 	end, false)
